@@ -1,10 +1,10 @@
 import cStringIO
 from datetime import datetime
+import math
 import os
 import re
 import string
 import sys
-
 import urlparse
 
 
@@ -22,16 +22,17 @@ class DocumentTree(object):
         for tag in document.tags:
             self.tags.setdefault(tag, []).append(document)
 
-    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/"):
+    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/", blackList=[]):
         """Output a list of tuples of the form:
         [(tagname, bucketNumber, url), ...]"""
         out = []
-        maxCount = max([len(x) for x in self.tags.values()])
-        bucketSize = maxCount / float("%d" % numBuckets)
+        # maxCount = max([len(x) for x in self.tags.values()])
+        # bucketSize = maxCount / float("%d" % numBuckets)
         for tag, listOfDocs in self.tags.items():
             count = len(listOfDocs)
-            bucket = int(count / bucketSize)
-            if count < minCount or bucket < 1:
+            bucket = int(math.log(count)) # int(count / bucketSize)
+            print tag, count, bucket
+            if count < minCount or bucket < 1 or tag in blackList:
                 continue
             out.append((tag, bucket, baseURL+tag+suffix))
         return out
@@ -52,7 +53,7 @@ class Document(object):
             self.load(file)
 
     def load(self, fileName):
-        fp = open(fileName)
+        fp = cStringIO.StringIO(open(fileName).read())
         self._parseLines(fp)
         fp.close()
 
@@ -91,7 +92,13 @@ class Document(object):
 
     def _extractDate(self, line):
         match = re.search(r'^meta-creation_date:\s*(.*?)$', line)
-        return match and datetime.strptime(match.groups(1)[0], "%m/%d/%Y %H:%M") or ''
+        if match:
+            for format in ("%m/%d/%Y %H:%M", "%m/%d/%Y %H:%M:%s", "%m/%d/%Y"):
+                try:
+                    return datetime.strptime(match.groups(1)[0], format)
+                except ValueError:
+                    pass
+        return "" 
 
     def _extractExcerpt(self, lines):
         match = re.search(r'<p>(.*?)</p>?', lines, flags=re.IGNORECASE|re.MULTILINE|re.DOTALL)
@@ -104,7 +111,7 @@ class Document(object):
 
 
 
-def buildDocumentTree(directoryRoot=None, suffix="", baseURL="/", docClass=Document):
+def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix=".html", baseURL="/", docClass=Document, dirBlackList=[]):
     """
     Helper/example of populating DocumentTree
     For my needs:
@@ -117,11 +124,22 @@ def buildDocumentTree(directoryRoot=None, suffix="", baseURL="/", docClass=Docum
     """
     tree = DocumentTree()
     for root, subFolders, files in os.walk(directoryRoot):
+        print root
+        listed = False
+        for folder in dirBlackList:
+            if root.startswith(folder):
+                listed = True
+                break
+        if listed:
+            break
         for filename in files:
+            if not filename.endswith(findSuffix):
+                continue
             filePath = os.path.join(root, filename)
             url = urlparse.urljoin(baseURL, filePath)
             if suffix:
                 url = url.split(".")[0] + "." + suffix
+            # print "filePath:", filePath
             doc = docClass(file=filePath,
                            url=url)
             tree.add(doc)
@@ -220,4 +238,12 @@ def htmlCloud(cloudifyOutput,
     tags = "".join([cloudTagTemplate.safe_substitute(tag=tag, bucket=bucket, url=url) for tag, bucket, url in cloudifyOutput])
     output = cloudTemplate.safe_substitute(tags=tags)
     return output
+
+if __name__ == "__main__":
+    def validTags(element):
+        return "_" not in element[0]
+
+    tree = buildDocumentTree(".", baseURL="/blog/", dirBlackList=['./tech'])
+    cloud = filter(validTags, tree.cloudify())
+    html = htmlCloud(sorted(cloud, key=lambda x : x[0]))
 
