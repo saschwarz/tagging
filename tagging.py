@@ -84,7 +84,7 @@ class Document(object):
 
     def _extractExplicitTags(self, line):
         tags = ()
-        match = re.match('^TAGS:', line)
+        match = re.match('^Tags:', line)
         if match:
             tags = tuple([x.strip() for x in line[match.end():].split(",")])
         return tags

@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import shutil
 import operator
 from pyvows import Vows, expect
 from tagging import Document, DocumentTree, htmlCloud, tagResourceHTML, documentToHTML, generateAllTagResourceHTML
@@ -119,6 +120,14 @@ class BuildingDocumentTree(Vows.Context):
             def ftag_file_exists(self, doctree):
                 expect(os.path.exists("/tmp/tags/ftag.html")).to_be_true()
 
+            class CleanUpTagHTMLFiles(Vows.Context):
+                def topic(self, doctree, treetopic):
+                    shutil.rmtree("/tmp/tags")
+                    return "/tmp/tags"
+
+                def test_files(self, topic):
+                    expect(os.path.exists(topic)).to_be_false()
+
     class AddDocumentsWithoutTags(Vows.Context):
         def topic(self):
             tree = DocumentTree()
@@ -142,7 +151,7 @@ class ReadingDocument(Vows.Context):
 
     class ProcessingTagsLine(Vows.Context):
         def topic(self):
-            return Document()._extractExplicitTags("TAGS: atag, btag")
+            return Document()._extractExplicitTags("Tags: atag, btag")
 
         def two_tags_are_found(self, topic):
             expect(topic).to_length(2)
@@ -171,7 +180,7 @@ class ReadingDocument(Vows.Context):
     class ParsingTextWithTags(Vows.Context):
         def topic(self):
             doc = Document()
-            doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\nTAGS: atag, btag\n<p>some text goes here</p><div>div text</div></p><p>ignore this [[ATAG a tag]] text</p>\n")
+            doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\nTags: atag, btag\n<p>some text goes here</p><div>div text</div></p><p>ignore this [[ATAG a tag]] text</p>\n")
             return doc
 
         def should_find_title(self, topic):
