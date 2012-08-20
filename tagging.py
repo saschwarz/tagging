@@ -155,7 +155,7 @@ def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix="html", base
 # 2. use functools.partial to wrap functions with customizations
 #
 TagTemplate = string.Template("""<li class="tag"><a href="$url">$name</a></li>""")
-TagWrapperTemplate = string.Template("""<ul class="tags">$tags</ul>""")
+TagWrapperTemplate = string.Template("""<div class="tags-label">Tags:</div><ul class="tags">$tags</ul>""")
 def tagFilePath(name,
                 baseURL="/blog/tags/",
                 suffix="html"):
@@ -176,7 +176,7 @@ def tagsToHTML(tags,
     html = parentElement.safe_substitute(tags=tags)
     return html
 
-DocumentTemplate = string.Template("""<div class="tag-doc"><h2><a href="$url">$title</a></h2><div class="date">$date</div><div class="body"><p>$excerpt</p><a class="seemore" href="$url">Read more...</a>$tags</div></div>""")
+DocumentTemplate = string.Template("""<div class="tag-doc"><h2><a href="$url">$title</a></h2><div class="date">$date</div><div class="body"><p>$excerpt</p><div><a class="seemore" href="$url">Read more...</a></div>$tags</div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div>""")
 
 def documentToHTML(doc,
                    dateFormat="%d %b %Y",
@@ -229,7 +229,7 @@ def generateTagResourcesHTML(doctree, tags, destPath, dateFormat="%m/%d/%Y %H:%M
             f.write(html)
 
 CloudTemplate = string.Template("""<div class="tag-cloud">$tags</div>""")
-CloudTagTemplate = string.Template("""<a class="tag-$bucket" href="$url">$tag</a>""")
+CloudTagTemplate = string.Template("""<a class="tag-$bucket" href="$url">$tag</a> """)
 
 def htmlCloud(cloudifyOutput,
               cloudTemplate=CloudTemplate,
