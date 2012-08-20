@@ -22,7 +22,7 @@ class DocumentTree(object):
         for tag in document.tags:
             self.tags.setdefault(tag, []).append(document)
 
-    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/", blackList=[]):
+    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/blog/tags/", blackList=[]):
         """Output a list of tuples of the form:
         [(tagname, bucketNumber, url), ...]"""
         out = []
@@ -31,7 +31,7 @@ class DocumentTree(object):
         for tag, listOfDocs in self.tags.items():
             count = len(listOfDocs)
             bucket = int(math.log(count)) # int(count / bucketSize)
-            print tag, count, bucket
+            # print tag, count, bucket
             if count < minCount or bucket < 1 or tag in blackList:
                 continue
             out.append((tag, bucket, baseURL+tag+suffix))
@@ -111,7 +111,7 @@ class Document(object):
 
 
 
-def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix=".html", baseURL="/", docClass=Document, dirBlackList=[]):
+def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix="html", baseURL="/", docClass=Document, dirBlackList=[]):
     """
     Helper/example of populating DocumentTree
     For my needs:
@@ -124,14 +124,13 @@ def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix=".html", bas
     """
     tree = DocumentTree()
     for root, subFolders, files in os.walk(directoryRoot):
-        print root
         listed = False
         for folder in dirBlackList:
             if root.startswith(folder):
                 listed = True
                 break
         if listed:
-            break
+            continue
         for filename in files:
             if not filename.endswith(findSuffix):
                 continue
@@ -158,7 +157,7 @@ def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix=".html", bas
 TagTemplate = string.Template("""<li class="tag"><a href="$url">$name</a></li>""")
 TagWrapperTemplate = string.Template("""<ul class="tags">$tags</ul>""")
 def tagFilePath(name,
-                baseURL="/",
+                baseURL="/blog/tags/",
                 suffix="html"):
     """
     Generate URL for resource containing all Documents having this tag name.
@@ -177,7 +176,7 @@ def tagsToHTML(tags,
     html = parentElement.safe_substitute(tags=tags)
     return html
 
-DocumentTemplate = string.Template("""<div class="tag-doc date"><h2><a href="$url">$title</a></h2><div class="date">$date</div><div class="body"><p>$excerpt</p><a class="seemore" href="$url">Read more...</a>$tags</div></div>""")
+DocumentTemplate = string.Template("""<div class="tag-doc"><h2><a href="$url">$title</a></h2><div class="date">$date</div><div class="body"><p>$excerpt</p><a class="seemore" href="$url">Read more...</a>$tags</div></div>""")
 
 def documentToHTML(doc,
                    dateFormat="%d %b %Y",
@@ -213,7 +212,7 @@ def tagResourceHTML(tag,
                                           date=datetime.now().strftime(dateFormat))
     return output
 
-def generateAllTagResourceHTML(doctree, destPath, dateFormat="%m/%d/%Y %H:%M", suffix=".html"):
+def generateTagResourcesHTML(doctree, tags, destPath, dateFormat="%m/%d/%Y %H:%M:00", suffix=".txt"):
     """
     Example writing HTML files for each tag to disk
     """
@@ -221,9 +220,10 @@ def generateAllTagResourceHTML(doctree, destPath, dateFormat="%m/%d/%Y %H:%M", s
         os.makedirs(destPath)
     except OSError:
         pass
-    for tag, docs in doctree.tags.items():
+    for tag in tags:
+        docs = doctree.tags[tag]
         # sort docs newest to oldest
-        docs = sorted(docs, key=lambda x: x.date)
+        docs = sorted(docs, key=lambda x: x.date, reverse=True)
         html = tagResourceHTML(tag, docs, dateFormat=dateFormat)
         with open(os.path.join(destPath, tag+suffix), "w") as f:
             f.write(html)
@@ -243,7 +243,15 @@ if __name__ == "__main__":
     def validTags(element):
         return "_" not in element[0]
 
-    tree = buildDocumentTree(".", baseURL="/blog/", dirBlackList=['./tech'])
+    tree = buildDocumentTree(".", baseURL="/blog/", dirBlackList=['./tech', './tags'])
     cloud = filter(validTags, tree.cloudify())
-    html = htmlCloud(sorted(cloud, key=lambda x : x[0]))
 
+    # sort by tag name
+    html = htmlCloud(sorted(cloud, key=lambda x : x[0]))
+    # put html cloud into fragment file for inclusion in other pages:
+    with open("../plugins/filedata/tagcloud", "w") as cloudFile:
+        cloudFile.write(html)
+    # generate tag files for the tags in the cloud
+    tags = [tag for tag, bucket, url in cloud]
+    generateTagResourcesHTML(tree, tags, "./tags")
+    
