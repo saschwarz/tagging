@@ -54,6 +54,9 @@ class Document(object):
 
     def load(self, fileName):
         fp = cStringIO.StringIO(open(fileName).read())
+        # each element of path are also tags (except root and filename) 
+        self.tags = tuple(fileName.split(os.path.sep)[1:-1])
+        print fileName, self.tags
         self._parseLines(fp)
         fp.close()
 
@@ -71,7 +74,7 @@ class Document(object):
             else:
                 tags = self._extractExplicitTags(line)
                 if tags:
-                    self.tags = tags
+                    self.tags = tuple(set(self.tags+tags))
                     break
             line = fp.readline()
 
@@ -193,7 +196,7 @@ def documentToHTML(doc,
                                             tags=tagFormatter(doc.tags))
     return html
 
-PageTemplate = string.Template("""Articles tagged with '$tag'
+PageTemplate = string.Template("""$num Articles Tagged With: '$tag'
 meta-creation_date: $date
 
 <div class="tag-docs">$docs</div>""")
@@ -208,6 +211,7 @@ def tagResourceHTML(tag,
     Documents associated with the specified tag in the order provided.
     """
     output = pageTemplate.safe_substitute(docs="".join([documentToHTML(x) for x in docs]),
+                                          num=len(docs),
                                           tag=tag,
                                           date=datetime.now().strftime(dateFormat))
     return output
@@ -247,11 +251,12 @@ if __name__ == "__main__":
     cloud = filter(validTags, tree.cloudify())
 
     # sort by tag name
-    html = htmlCloud(sorted(cloud, key=lambda x : x[0]))
+    html = htmlCloud(sorted(cloud, key=lambda x : x[0].lower()))
     # put html cloud into fragment file for inclusion in other pages:
     with open("../plugins/filedata/tagcloud", "w") as cloudFile:
         cloudFile.write(html)
-    # generate tag files for the tags in the cloud
-    tags = [tag for tag, bucket, url in cloud]
+    # generate tag files only for the tags in the cloud
+    # tags = [tag for tag, bucket, url in cloud]
+    tags = tree.tags
     generateTagResourcesHTML(tree, tags, "./tags")
     
