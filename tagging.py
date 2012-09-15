@@ -22,7 +22,13 @@ class DocumentTree(object):
         for tag in document.tags:
             self.tags.setdefault(tag, []).append(document)
 
-    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/blog/tags/", blackList=[], algo='log'):
+    def cloudify(self,
+                 minCount=2,
+                 numBuckets=6,
+                 suffix=".html",
+                 baseURL="/blog/tags/",
+                 blackList=[],
+                 algo='log'):
         """Output a list of tuples of the form:
         [(tagname, bucketNumber, url), ...]"""
         out = []
@@ -44,20 +50,21 @@ class DocumentTree(object):
 class Document(object):
     """Represent interesting tagged information about a single document/blog post"""
 
-    def __init__(self, url='', excerpt='', title='', date=None, tags=None, file=None):
+    def __init__(self, url='', excerpt='', title='', date=None, tags=None, file=None, body=''):
         self.tags = tags or ()
         self.excerpt = excerpt
         self.title = title
         self.date = date or datetime.now()
         self.url = url
         self.file = file
+        self.body = body
         if file:
             self.file = file
             self.load(file)
 
     def load(self, fileName):
         fp = cStringIO.StringIO(open(fileName).read())
-        # each element of path are also tags (except root and filename) 
+        # each element of path are also tags (except root and filename)
         self.tags = tuple(fileName.split(os.path.sep)[1:-1])
         print fileName, self.tags
         self._parseLines(fp)
@@ -68,6 +75,10 @@ class Document(object):
         self._parseLines(fp)
 
     def _parseLines(self, fp):
+        self._parseHead(fp)
+        self._parseBody(fp)
+
+    def _parseHead(self, fp):
         self.title = fp.readline().strip()
         line = fp.readline()
         while line:
@@ -79,13 +90,15 @@ class Document(object):
                 if tags:
                     self.tags = tuple(set(self.tags+tags))
                     break
-            line = fp.readline()
+            line = fp.readline().strip()
 
-        bodyTags = self._extractTagsFromBody(fp.getvalue())
+    def _parseBody(self, fp):
+        self.body = "".join(fp.readlines())
+        bodyTags = self._extractTagsFromBody(self.body)
         if bodyTags:
             self.tags = tuple(set(self.tags + bodyTags))
 
-        excerpt = self._extractExcerpt(fp.getvalue())
+        excerpt = self._extractExcerpt(self.body)
         if excerpt:
             self.excerpt = excerpt
 
@@ -104,7 +117,7 @@ class Document(object):
                     return datetime.strptime(match.groups(1)[0], format)
                 except ValueError:
                     pass
-        return "" 
+        return ""
 
     def _extractExcerpt(self, lines):
         match = re.search(r'<p>(.*?)</p>?', lines, flags=re.IGNORECASE|re.MULTILINE|re.DOTALL)
@@ -117,7 +130,12 @@ class Document(object):
 
 
 
-def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix="html", baseURL="/", docClass=Document, dirBlackList=[]):
+def buildDocumentTree(directoryRoot=None,
+                      findSuffix=".txt",
+                      suffix="html",
+                      baseURL="/",
+                      docClass=Document,
+                      dirBlackList=[]):
     """
     Helper/example of populating DocumentTree
     For my needs:
@@ -241,10 +259,11 @@ CloudTagTemplate = string.Template("""<a class="tag-$bucket" href="$url">$tag</a
 def htmlCloud(cloudifyOutput,
               cloudTemplate=CloudTemplate,
               cloudTagTemplate=CloudTagTemplate):
-    """Sort cloudifyOutput to suit your outputting needs"""
+    """Sort cloudifyOutput to suit your outputting needs."""
     tags = "".join([cloudTagTemplate.safe_substitute(tag=tag, bucket=bucket, url=url) for tag, bucket, url in cloudifyOutput])
     output = cloudTemplate.safe_substitute(tags=tags)
     return output
+
 
 if __name__ == "__main__":
     def validTags(element):
@@ -262,4 +281,4 @@ if __name__ == "__main__":
     # tags = [tag for tag, bucket, url in cloud]
     tags = tree.tags
     generateTagResourcesHTML(tree, tags, "./tags")
-    
+

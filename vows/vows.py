@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import shutil
 import operator
+import cStringIO
 from pyvows import Vows, expect
 from tagging import Document, DocumentTree, htmlCloud, tagResourceHTML, documentToHTML, generateTagResourcesHTML
 
@@ -94,7 +95,7 @@ class BuildingDocumentTree(Vows.Context):
             """Yes this is a horrible and brittle test..."""
             tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
             html = tagResourceHTML("atag", tree.tags["atag"], dateFormat="2012/01/31 0:00:00")
-            expect(html).to_equal('6 Articles Tagged With: \'atag\'\nmeta-creation_date: 2012/01/31 0:00:00\n\n<div class="tag-docs"><div class="tag-doc"><h2><a href="">Doc 1</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document one.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 2</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document two.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 3</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document three.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 4</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document four.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 5</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document five.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 6</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document six.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li><li class="tag"><a href="/blog/tags/ftag.html">ftag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div></div>')
+            expect(html).to_equal('6 Articles Tagged With: \'atag\'\nmeta-creation_date: 2012/01/31 0:00:00\n\n<div class="tag-docs"><article style="clear:both;"><h2><a href="">Doc 1</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document one.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 2</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document two.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 3</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document three.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 4</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document four.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 5</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document five.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 6</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document six.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li><li class="tag"><a href="/blog/tags/ftag.html">ftag</a></li></ul></td</tr></table></div></article></div>')
 
 
         class GenerateTagHTMLFiles(Vows.Context):
@@ -143,6 +144,24 @@ class BuildingDocumentTree(Vows.Context):
 
 @Vows.batch
 class ReadingDocument(Vows.Context):
+    class ProcessingHeadSection(Vows.Context):
+        def topic(self):
+            now = datetime(2012, 1, 31)
+            doc = Document()
+            fp = cStringIO.StringIO("A Title\nmeta-creation_date: 1/31/2012 0:00\n\n<p>BODY</p>")
+            doc._parseHead(fp)
+            doc._parseBody(fp)
+            return doc, now
+
+        def title_is_found(self, topic):
+            expect(topic[0].title).to_equal("A Title")
+
+        def creation_date_is_found(self, topic):
+            expect(topic[0].date).to_equal(topic[1])
+
+        def body_is_left(self, topic):
+            expect(topic[0].body).to_equal("<p>BODY</p>")
+
     class ProcessingEmptyTagsLine(Vows.Context):
         def topic(self):
             return Document()._extractExplicitTags("")
@@ -157,10 +176,10 @@ class ReadingDocument(Vows.Context):
         def two_tags_are_found(self, topic):
             expect(topic).to_length(2)
 
-        def tags_include_atag(self, topic):
+        def tags_include_atag_an_btag(self, topic):
             expect(topic).to_be_like(["btag", "atag"])
 
-    class ParsingTextWithoutTags(Vows.Context):
+    class ParsingTextWithoutTagsLineInHeader(Vows.Context):
         def topic(self):
             doc = Document()
             doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\n\n<p>some text goes here\n<div>div text</div>\n</p><p>ignore [[ATAG a tag]] [[BTAG b tag]]\nthis text</p>")
@@ -178,10 +197,10 @@ class ReadingDocument(Vows.Context):
         def should_find_excerpt(self, topic):
             expect(topic.excerpt).to_equal("some text goes here\n<div>div text</div>\n")
 
-    class ParsingTextWithTags(Vows.Context):
+    class ParsingTextWithTagsLineInHeader(Vows.Context):
         def topic(self):
             doc = Document()
-            doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\nTags: atag, btag\n<p>some text goes here</p><div>div text</div></p><p>ignore this [[ATAG a tag]] text. [[TAG-WITH-DASH dashed tag]].</p>\n")
+            doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\nTags: atag, btag\n\n<p>some text goes here</p><div>div text</div></p><p>ignore this [[ATAG a tag]] text. [[TAG-WITH-DASH dashed tag]].</p>\n")
             return doc
 
         def should_find_title(self, topic):
