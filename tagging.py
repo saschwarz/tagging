@@ -22,15 +22,18 @@ class DocumentTree(object):
         for tag in document.tags:
             self.tags.setdefault(tag, []).append(document)
 
-    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/blog/tags/", blackList=[]):
+    def cloudify(self, minCount=2, numBuckets=6, suffix=".html", baseURL="/blog/tags/", blackList=[], algo='log'):
         """Output a list of tuples of the form:
         [(tagname, bucketNumber, url), ...]"""
         out = []
-        # maxCount = max([len(x) for x in self.tags.values()])
-        # bucketSize = maxCount / float("%d" % numBuckets)
+        maxCount = max([len(x) for x in self.tags.values()])
+        bucketSize = maxCount / float("%d" % numBuckets)
         for tag, listOfDocs in self.tags.items():
             count = len(listOfDocs)
-            bucket = int(math.log(count)) # int(count / bucketSize)
+            if algo == 'log':
+                bucket = int(math.log(count))
+            else:
+                bucket = int(count / bucketSize)
             # print tag, count, bucket
             if count < minCount or bucket < 1 or tag in blackList:
                 continue
@@ -109,7 +112,7 @@ class Document(object):
 
     def _extractTagsFromBody(self, lines):
         """tags are of the form [[tagname words used in link on page]]"""
-        reg = re.compile(r'(\[\[(\w+)[^[]*?\]\])+', flags=re.MULTILINE)
+        reg = re.compile(r'(\[\[([\w-]+)[^[]*?\]\])+', flags=re.MULTILINE)
         return tuple([x.group(2) for x in re.finditer(reg, lines)])
 
 
@@ -158,7 +161,7 @@ def buildDocumentTree(directoryRoot=None, findSuffix=".txt", suffix="html", base
 # 2. use functools.partial to wrap functions with customizations
 #
 TagTemplate = string.Template("""<li class="tag"><a href="$url">$name</a></li>""")
-TagWrapperTemplate = string.Template("""<div class="tags-label">Tags:</div><ul class="tags">$tags</ul>""")
+TagWrapperTemplate = string.Template("""<table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags">$tags</ul></td</tr></table>""")
 def tagFilePath(name,
                 baseURL="/blog/tags/",
                 suffix="html"):
@@ -179,7 +182,7 @@ def tagsToHTML(tags,
     html = parentElement.safe_substitute(tags=tags)
     return html
 
-DocumentTemplate = string.Template("""<div class="tag-doc"><h2><a href="$url">$title</a></h2><div class="date">$date</div><div class="body"><p>$excerpt</p><div><a class="seemore" href="$url">Read more...</a></div>$tags</div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div>""")
+DocumentTemplate = string.Template("""<article style="clear:both;"><h2><a href="$url">$title</a></h2><div class="date">$date</div><div class="body"><p>$excerpt</p><p><a class="seemore" href="$url">Read more...</a></p>$tags</div></article>""")
 
 def documentToHTML(doc,
                    dateFormat="%d %b %Y",

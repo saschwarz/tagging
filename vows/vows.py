@@ -3,7 +3,7 @@ from datetime import datetime
 import shutil
 import operator
 from pyvows import Vows, expect
-from tagging import Document, DocumentTree, htmlCloud, tagResourceHTML, documentToHTML, generateAllTagResourceHTML
+from tagging import Document, DocumentTree, htmlCloud, tagResourceHTML, documentToHTML, generateTagResourcesHTML
 
 
 @Vows.batch
@@ -57,7 +57,7 @@ class BuildingDocumentTree(Vows.Context):
 
         def should_create_cloud_with_six_weights(self, topic):
             tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
-            cloud = tree.cloudify(minCount=0, numBuckets=6, suffix=".htm", baseURL="/blog/tags/")
+            cloud = tree.cloudify(minCount=0, numBuckets=6, suffix=".htm", baseURL="/blog/tags/", algo='count')
             expect(cloud).to_be_like([('atag', 6, "/blog/tags/atag.htm"),
                                       ('btag', 5, "/blog/tags/btag.htm"),
                                       ('ctag', 4, "/blog/tags/ctag.htm"),
@@ -67,7 +67,7 @@ class BuildingDocumentTree(Vows.Context):
 
         def should_create_cloud_with_three_weights(self, topic):
             tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
-            cloud = tree.cloudify(minCount=0, numBuckets=3, suffix=".htm", baseURL="/blog/tags/")
+            cloud = tree.cloudify(minCount=0, numBuckets=3, suffix=".htm", baseURL="/blog/tags/", algo='count')
             expect(cloud).to_be_like([('atag', 3, "/blog/tags/atag.htm"),
                                       ('btag', 2, "/blog/tags/btag.htm"),
                                       ('ctag', 2, "/blog/tags/ctag.htm"),
@@ -76,7 +76,7 @@ class BuildingDocumentTree(Vows.Context):
 
         def should_create_cloud_with_six_weights_and_ignore_counts_less_than_two(self, topic):
             tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
-            cloud = tree.cloudify(minCount=2, numBuckets=6, suffix=".htm", baseURL="/blog/tags/")
+            cloud = tree.cloudify(minCount=2, numBuckets=6, suffix=".htm", baseURL="/blog/tags/", algo='count')
             expect(cloud).to_be_like([('atag', 6, "/blog/tags/atag.htm"),
                                       ('btag', 5, "/blog/tags/btag.htm"),
                                       ('ctag', 4, "/blog/tags/ctag.htm"),
@@ -85,42 +85,43 @@ class BuildingDocumentTree(Vows.Context):
 
         def create_html_cloud(self, topic):
             tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
-            cloud = tree.cloudify(minCount=2, numBuckets=6, suffix=".htm", baseURL="/blog/tags/")
+            cloud = tree.cloudify(minCount=2, numBuckets=6, suffix=".htm", baseURL="/blog/tags/", algo='count')
             # sort alpha by tag name
             cloud = sorted(cloud, key=operator.itemgetter(0))
-            expect(htmlCloud(cloud)).to_equal("""<div class="tag-cloud"><a class="tag-6" href="/blog/tags/atag.htm">atag</a><a class="tag-5" href="/blog/tags/btag.htm">btag</a><a class="tag-4" href="/blog/tags/ctag.htm">ctag</a><a class="tag-3" href="/blog/tags/dtag.htm">dtag</a><a class="tag-2" href="/blog/tags/etag.htm">etag</a></div>""")
+            expect(htmlCloud(cloud)).to_equal("""<div class="tag-cloud"><a class="tag-6" href="/blog/tags/atag.htm">atag</a> <a class="tag-5" href="/blog/tags/btag.htm">btag</a> <a class="tag-4" href="/blog/tags/ctag.htm">ctag</a> <a class="tag-3" href="/blog/tags/dtag.htm">dtag</a> <a class="tag-2" href="/blog/tags/etag.htm">etag</a> </div>""")
 
         def create_html_document_for_one_tag(self, topic):
             """Yes this is a horrible and brittle test..."""
             tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
             html = tagResourceHTML("atag", tree.tags["atag"], dateFormat="2012/01/31 0:00:00")
-            expect(html).to_equal('Articles tagged with \'atag\'\nmeta-creation_date: 2012/01/31 0:00:00\n\n<div class="tag-docs"><div class="tag-doc date"><h2><a href="">Doc 1</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document one.</p><a class="seemore" href="">Read more...</a><ul class="tags"><li class="tag"><a href="/atag.html">atag</a></li></ul></div></div><div class="tag-doc date"><h2><a href="">Doc 2</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document two.</p><a class="seemore" href="">Read more...</a><ul class="tags"><li class="tag"><a href="/atag.html">atag</a></li><li class="tag"><a href="/btag.html">btag</a></li></ul></div></div><div class="tag-doc date"><h2><a href="">Doc 3</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document three.</p><a class="seemore" href="">Read more...</a><ul class="tags"><li class="tag"><a href="/atag.html">atag</a></li><li class="tag"><a href="/btag.html">btag</a></li><li class="tag"><a href="/ctag.html">ctag</a></li></ul></div></div><div class="tag-doc date"><h2><a href="">Doc 4</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document four.</p><a class="seemore" href="">Read more...</a><ul class="tags"><li class="tag"><a href="/atag.html">atag</a></li><li class="tag"><a href="/btag.html">btag</a></li><li class="tag"><a href="/ctag.html">ctag</a></li><li class="tag"><a href="/dtag.html">dtag</a></li></ul></div></div><div class="tag-doc date"><h2><a href="">Doc 5</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document five.</p><a class="seemore" href="">Read more...</a><ul class="tags"><li class="tag"><a href="/atag.html">atag</a></li><li class="tag"><a href="/btag.html">btag</a></li><li class="tag"><a href="/ctag.html">ctag</a></li><li class="tag"><a href="/dtag.html">dtag</a></li><li class="tag"><a href="/etag.html">etag</a></li></ul></div></div><div class="tag-doc date"><h2><a href="">Doc 6</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document six.</p><a class="seemore" href="">Read more...</a><ul class="tags"><li class="tag"><a href="/atag.html">atag</a></li><li class="tag"><a href="/btag.html">btag</a></li><li class="tag"><a href="/ctag.html">ctag</a></li><li class="tag"><a href="/dtag.html">dtag</a></li><li class="tag"><a href="/etag.html">etag</a></li><li class="tag"><a href="/ftag.html">ftag</a></li></ul></div></div></div>')
+            expect(html).to_equal('6 Articles Tagged With: \'atag\'\nmeta-creation_date: 2012/01/31 0:00:00\n\n<div class="tag-docs"><div class="tag-doc"><h2><a href="">Doc 1</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document one.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 2</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document two.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 3</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document three.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 4</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document four.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 5</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document five.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div><div class="tag-doc"><h2><a href="">Doc 6</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document six.</p><div><a class="seemore" href="">Read more...</a></div><div class="tags-label">Tags:</div><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li><li class="tag"><a href="/blog/tags/ftag.html">ftag</a></li></ul></div></div><div class="separator"><img alt="" src="http://data.agilitynerd.com/images/bc_separator.gif"></div></div>')
+
 
         class GenerateTagHTMLFiles(Vows.Context):
             def topic(self, treeTopic):
                 doctree = treeTopic[0]
-                generateAllTagResourceHTML(doctree, "/tmp/tags")
+                generateTagResourcesHTML(doctree, doctree.tags, "/tmp/tags")
                 return doctree
 
             def atag_file_exists(self, doctree):
-                expect(os.path.exists("/tmp/tags/atag.html")).to_be_true()
+                expect(os.path.exists("/tmp/tags/atag.txt")).to_be_true()
 
             def btag_file_exists(self, doctree):
-                expect(os.path.exists("/tmp/tags/btag.html")).to_be_true()
+                expect(os.path.exists("/tmp/tags/btag.txt")).to_be_true()
 
             def ctag_file_exists(self, doctree):
-                expect(os.path.exists("/tmp/tags/ctag.html")).to_be_true()
+                expect(os.path.exists("/tmp/tags/ctag.txt")).to_be_true()
 
             def dtag_file_exists(self, doctree):
-                expect(os.path.exists("/tmp/tags/dtag.html")).to_be_true()
+                expect(os.path.exists("/tmp/tags/dtag.txt")).to_be_true()
 
             def etag_file_exists(self, doctree):
-                expect(os.path.exists("/tmp/tags/etag.html")).to_be_true()
+                expect(os.path.exists("/tmp/tags/etag.txt")).to_be_true()
 
             def ftag_file_exists(self, doctree):
-                expect(os.path.exists("/tmp/tags/ftag.html")).to_be_true()
+                expect(os.path.exists("/tmp/tags/ftag.txt")).to_be_true()
 
-            class CleanUpTagHTMLFiles(Vows.Context):
+            class CleanUpTagTxtFiles(Vows.Context):
                 def topic(self, doctree, treetopic):
                     shutil.rmtree("/tmp/tags")
                     return "/tmp/tags"
@@ -180,7 +181,7 @@ class ReadingDocument(Vows.Context):
     class ParsingTextWithTags(Vows.Context):
         def topic(self):
             doc = Document()
-            doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\nTags: atag, btag\n<p>some text goes here</p><div>div text</div></p><p>ignore this [[ATAG a tag]] text</p>\n")
+            doc.parse("A Title\nmeta-creation_date: 8/13/2012 10:20\nTags: atag, btag\n<p>some text goes here</p><div>div text</div></p><p>ignore this [[ATAG a tag]] text. [[TAG-WITH-DASH dashed tag]].</p>\n")
             return doc
 
         def should_find_title(self, topic):
@@ -190,7 +191,7 @@ class ReadingDocument(Vows.Context):
             expect(topic.date).to_equal(datetime(2012, 8, 13, 10, 20))
 
         def should_find_explicit_and_body_tags(self, topic):
-            expect(topic.tags).to_be_like(("ATAG", "atag", "btag"))
+            expect(topic.tags).to_be_like(("ATAG", "atag", "btag", "TAG-WITH-DASH"))
 
         def should_find_excerpt(self, topic):
             expect(topic.excerpt).to_equal("some text goes here")
