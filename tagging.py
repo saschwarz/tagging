@@ -49,11 +49,11 @@ class DocumentTree(object):
             out.append((tag, bucket, baseURL+tag+suffix))
         return out
 
-    def updateRelated(self, limit=6):
+    def updateRelated(self, limit=6, ignoreTags=[]):
         for doc in self.documents:
             candidates = set()
             # only look at docs (besides the current one) with at least one of our tags
-            for tag in doc.tags:
+            for tag in filter(lambda x: x not in ignoreTags, doc.tags):
                 candidates.update(filter(lambda x: x != doc, self.tags[tag]))
             doc.related = sorted(sorted(candidates, key=attrgetter('date'), reverse=True), key=lambda x: len(doc.tags.intersection(x.tags)), reverse=True)[:limit]
 
@@ -220,7 +220,7 @@ def buildDocumentTree(directoryRoot=None,
 # 2. use functools.partial to wrap functions with customizations
 #
 TagTemplate = string.Template("""<li class="tag"><a href="$url">$name</a></li>""")
-TagWrapperTemplate = string.Template("""<table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags">$tags</ul></td</tr></table>""")
+TagWrapperTemplate = string.Template("""<table border="0" class="tags-table"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags">$tags</ul></td</tr></table>""")
 def tagFilePath(name,
                 baseURL="/blog/tags/",
                 suffix="html"):
@@ -307,6 +307,10 @@ def htmlCloud(cloudifyOutput,
 
 
 if __name__ == "__main__":
+    def relatedToHTML(docs):
+        ret = "".join(["""<li><a href="%s">%s</a></li>""" % (doc.url, doc.title) for doc in docs])
+        return ret and """<div class="related"><div class="related-label">Related Articles:</div><ul">""" + ret + "</ul></div>" or ''
+
     def validTags(element):
         return "_" not in element[0]
 
@@ -323,7 +327,9 @@ if __name__ == "__main__":
     tags = tree.tags
     generateTagResourcesHTML(tree, tags, "./tags")
 
+    tree.updateRelated(ignoreTags=['journal', 'agility',])
     # now update each source file with the updated tags and formatted tags
     for doc in tree.documents:
         doc.write(doc.file + ".new",
-                  formattedTags=tagsToHTML(doc.tags))
+                  formattedTags=tagsToHTML(doc.tags),
+                  formattedRelated=relatedToHTML(doc.related))
