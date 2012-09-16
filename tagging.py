@@ -120,17 +120,19 @@ class Document(object):
         self._parseBody(fp)
 
     def _parseHead(self, fp):
+        """Only extract title, date, and tags from header skip the rest."""
         self.title = fp.readline().strip()
-        line = fp.readline()
+        line = fp.readline().strip()
+        date = tags = None
         while line:
-            date = self._extractDate(line)
-            if date:
-                self.date = date
-            else:
+            if not date:
+                date = self._extractDate(line)
+                if date:
+                    self.date = date
+            elif not tags:
                 tags = self._extractExplicitTags(line)
                 if tags:
                     self.tags.update(tags)
-                    break
             line = fp.readline().strip()
 
     def _parseBody(self, fp):
@@ -153,12 +155,12 @@ class Document(object):
     def _extractDate(self, line):
         match = re.search(r'^meta-creation_date:\s*(.*?)$', line)
         if match:
-            for format in ("%m/%d/%Y %H:%M", "%m/%d/%Y %H:%M:%s", "%m/%d/%Y"):
+            for format in ("%m/%d/%Y %H:%M", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y"):
                 try:
-                    return datetime.strptime(match.groups(1)[0], format)
+                    return datetime.strptime(match.groups(1)[0].strip(), format)
                 except ValueError:
                     pass
-        return ""
+        raise Exception("Unexpected date format: " + line)
 
     def _extractExcerpt(self, lines):
         match = re.search(r'<p>(.*?)</p>?', lines, flags=re.IGNORECASE|re.MULTILINE|re.DOTALL)
@@ -330,6 +332,6 @@ if __name__ == "__main__":
     tree.updateRelated(ignoreTags=['journal', 'agility',])
     # now update each source file with the updated tags and formatted tags
     for doc in tree.documents:
-        doc.write(doc.file + ".new",
+        doc.write(doc.file,
                   formattedTags=tagsToHTML(doc.tags),
                   formattedRelated=relatedToHTML(doc.related))
