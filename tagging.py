@@ -6,6 +6,7 @@ import re
 import string
 import sys
 import urlparse
+from operator import attrgetter
 
 
 class DocumentTree(object):
@@ -15,10 +16,12 @@ class DocumentTree(object):
     and static HTML pages of Documents containing each tag.
     """
     def __init__(self):
-        self.tags = {}
+        self.tags = {} # dict of tag names to Documents
+        self.documents = []
 
     def add(self, document):
         """Add a Document into this collection"""
+        self.documents.append(document)
         for tag in document.tags:
             self.tags.setdefault(tag, []).append(document)
 
@@ -46,33 +49,71 @@ class DocumentTree(object):
             out.append((tag, bucket, baseURL+tag+suffix))
         return out
 
+    def updateRelated(self, limit=6):
+        for doc in self.documents:
+            candidates = set()
+            # only look at docs (besides the current one) with at least one of our tags
+            for tag in doc.tags:
+                candidates.update(filter(lambda x: x != doc, self.tags[tag]))
+            doc.related = sorted(sorted(candidates, key=attrgetter('date'), reverse=True), key=lambda x: len(doc.tags.intersection(x.tags)), reverse=True)[:limit]
 
 class Document(object):
     """Represent interesting tagged information about a single document/blog post"""
 
-    def __init__(self, url='', excerpt='', title='', date=None, tags=None, file=None, body=''):
-        self.tags = tags or ()
+    def __init__(self,
+                 url='',
+                 excerpt='',
+                 title='',
+                 date=None,
+                 tags=None,
+                 file=None,
+                 related=None,
+                 body=''):
+        self.tags = tags and set(tags) or set()
         self.excerpt = excerpt
         self.title = title
         self.date = date or datetime.now()
         self.url = url
         self.file = file
         self.body = body
+        self.related = related or set()
         if file:
             self.file = file
             self.load(file)
 
+    def __repr__(self):
+        return " ".join((self.title, self.url))
+
     def load(self, fileName):
         fp = cStringIO.StringIO(open(fileName).read())
         # each element of path are also tags (except root and filename)
-        self.tags = tuple(fileName.split(os.path.sep)[1:-1])
-        print fileName, self.tags
+        self.tags = set(fileName.split(os.path.sep)[1:-1])
+        # print fileName, self.tags
         self._parseLines(fp)
         fp.close()
 
     def parse(self, text):
         fp = cStringIO.StringIO(text)
         self._parseLines(fp)
+
+    def write(self, fileName, formattedTags=None, formattedRelated=None):
+        """Rewrite with extracted tags to specified file overwriting it if it exists"""
+        with open(fileName, "w") as fp:
+            self._write_head(fp, formattedTags, formattedRelated)
+            self._write_body(fp)
+
+    def _write_head(self, fp, formattedTags, formattedRelated):
+        fp.write(self.title+"\n")
+        fp.write("meta-creation_date: %s\n" % self.date.strftime("%m/%d/%Y %H:%M"))
+        fp.write("Tags: %s\n" % ", ".join(self.tags))
+        if formattedTags:
+            fp.write("meta-tags: %s\n" % formattedTags)
+        if formattedRelated:
+            fp.write("meta-related: %s\n" % formattedRelated)
+        fp.write("\n") # separates head from body
+
+    def _write_body(self, fp):
+        fp.write(self.body)
 
     def _parseLines(self, fp):
         self._parseHead(fp)
@@ -88,7 +129,7 @@ class Document(object):
             else:
                 tags = self._extractExplicitTags(line)
                 if tags:
-                    self.tags = tuple(set(self.tags+tags))
+                    self.tags.update(tags)
                     break
             line = fp.readline().strip()
 
@@ -96,7 +137,7 @@ class Document(object):
         self.body = "".join(fp.readlines())
         bodyTags = self._extractTagsFromBody(self.body)
         if bodyTags:
-            self.tags = tuple(set(self.tags + bodyTags))
+            self.tags.update(bodyTags)
 
         excerpt = self._extractExcerpt(self.body)
         if excerpt:
@@ -282,3 +323,7 @@ if __name__ == "__main__":
     tags = tree.tags
     generateTagResourcesHTML(tree, tags, "./tags")
 
+    # now update each source file with the updated tags and formatted tags
+    for doc in tree.documents:
+        doc.write(doc.file + ".new",
+                  formattedTags=tagsToHTML(doc.tags))

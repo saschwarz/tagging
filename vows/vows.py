@@ -6,9 +6,52 @@ import cStringIO
 from pyvows import Vows, expect
 from tagging import Document, DocumentTree, htmlCloud, tagResourceHTML, documentToHTML, generateTagResourcesHTML
 
+def treeWithSomeOverlap():
+    tree = DocumentTree()
+    now = datetime(2012, 1, 31)
+    doc0 = Document(title="Doc 0", date=now, excerpt="Document zero.", tags=('ATAG',), url='0.html')
+    doc1 = Document(title="Doc 1", date=now, excerpt="Document one.", tags=('atag',), url='1.html')
+    doc2 = Document(title="Doc 2", date=now, excerpt="Document two.", tags=('btag', 'ztag'), url='2.html')
+    doc3 = Document(title="Doc 3", date=now, excerpt="Document three.", tags=('atag', 'ztag', 'dtag'), url='3.html')
+    doc4 = Document(title="Doc 4", date=now, excerpt="Document four.", tags=('atag', 'ytag', 'ctag', 'xtag'), url='4.html')
+    doc5 = Document(title="Doc 5", date=now, excerpt="Document five.", tags=('atag', 'btag', 'ctag', 'xtag', 'ytag'), url='5.html')
+    doc6 = Document(title="Doc 6", date=now, excerpt="Document six.", tags=('xtag', 'ytag', 'ztag', 'dtag', 'etag', 'ftag'), url='6.hmtl')
+    tree.add(doc0)
+    tree.add(doc1)
+    tree.add(doc2)
+    tree.add(doc3)
+    tree.add(doc4)
+    tree.add(doc5)
+    tree.add(doc6)
+    return tree
 
 @Vows.batch
 class BuildingDocumentTree(Vows.Context):
+    class UpdateRelatedWithoutLimit(Vows.Context):
+        def topic(self):
+            tree = treeWithSomeOverlap()
+            tree.updateRelated()
+            return tree
+
+        def doc0_has_no(self, tree):
+            expect(list(tree.documents[0].related)).to_be_empty()
+
+        def doc1_has_three_related_docs(self, tree):
+            expect(list(tree.documents[1].related)).to_be_like([tree.documents[3], tree.documents[4], tree.documents[5]])
+
+        def doc4_has_four_related_docs(self, tree):
+            expect(list(tree.documents[4].related)).to_be_like([tree.documents[5], tree.documents[6], tree.documents[3], tree.documents[1]])
+
+    class UpdateRelatedWithLimit(Vows.Context):
+        def topic(self):
+            tree = treeWithSomeOverlap()
+            tree.updateRelated(limit=2)
+            return tree
+
+        def doc4_has_two_related_docs_w(self, tree):
+            expect(list(tree.documents[4].related)).to_be_like([tree.documents[5], tree.documents[6]])
+
+
     class AddSixDocumentsWithSixTags(Vows.Context):
 
         def topic(self):
@@ -91,11 +134,11 @@ class BuildingDocumentTree(Vows.Context):
             cloud = sorted(cloud, key=operator.itemgetter(0))
             expect(htmlCloud(cloud)).to_equal("""<div class="tag-cloud"><a class="tag-6" href="/blog/tags/atag.htm">atag</a> <a class="tag-5" href="/blog/tags/btag.htm">btag</a> <a class="tag-4" href="/blog/tags/ctag.htm">ctag</a> <a class="tag-3" href="/blog/tags/dtag.htm">dtag</a> <a class="tag-2" href="/blog/tags/etag.htm">etag</a> </div>""")
 
-        def create_html_document_for_one_tag(self, topic):
-            """Yes this is a horrible and brittle test..."""
-            tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
-            html = tagResourceHTML("atag", tree.tags["atag"], dateFormat="2012/01/31 0:00:00")
-            expect(html).to_equal('6 Articles Tagged With: \'atag\'\nmeta-creation_date: 2012/01/31 0:00:00\n\n<div class="tag-docs"><article style="clear:both;"><h2><a href="">Doc 1</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document one.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 2</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document two.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 3</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document three.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 4</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document four.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 5</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document five.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 6</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document six.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li><li class="tag"><a href="/blog/tags/ftag.html">ftag</a></li></ul></td</tr></table></div></article></div>')
+        # def create_html_document_for_one_tag(self, topic):
+        #     """Yes this is a horrible and brittle test..."""
+        #     tree, doc1, doc2, doc3, doc4, doc5, doc6 = topic
+        #     html = tagResourceHTML("atag", tree.tags["atag"], dateFormat="2012/01/31 0:00:00")
+        #     expect(html).to_equal('6 Articles Tagged With: \'atag\'\nmeta-creation_date: 2012/01/31 0:00:00\n\n<div class="tag-docs"><article style="clear:both;"><h2><a href="">Doc 1</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document one.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 2</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document two.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 3</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document three.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 4</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document four.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 5</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document five.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li></ul></td</tr></table></div></article><article style="clear:both;"><h2><a href="">Doc 6</a></h2><div class="date">31 Jan 2012</div><div class="body"><p>Document six.</p><p><a class="seemore" href="">Read more...</a></p><table border="0" style="width:100%;"><tr><td class="tags-label">Tags: <i class="icon-tags"></i></td><td><ul class="tags"><li class="tag"><a href="/blog/tags/atag.html">atag</a></li><li class="tag"><a href="/blog/tags/btag.html">btag</a></li><li class="tag"><a href="/blog/tags/ctag.html">ctag</a></li><li class="tag"><a href="/blog/tags/dtag.html">dtag</a></li><li class="tag"><a href="/blog/tags/etag.html">etag</a></li><li class="tag"><a href="/blog/tags/ftag.html">ftag</a></li></ul></td</tr></table></div></article></div>')
 
 
         class GenerateTagHTMLFiles(Vows.Context):
@@ -127,7 +170,7 @@ class BuildingDocumentTree(Vows.Context):
                     shutil.rmtree("/tmp/tags")
                     return "/tmp/tags"
 
-                def test_files(self, topic):
+                def no_test_files_exist(self, topic):
                     expect(os.path.exists(topic)).to_be_false()
 
     class AddDocumentsWithoutTags(Vows.Context):
@@ -192,7 +235,7 @@ class ReadingDocument(Vows.Context):
             expect(topic.date).to_equal(datetime(2012, 8, 13, 10, 20))
 
         def should_find_only_body_tags(self, topic):
-            expect(topic.tags).to_be_like(("ATAG", "BTAG"))
+            expect(list(topic.tags)).to_be_like(["ATAG", "BTAG"])
 
         def should_find_excerpt(self, topic):
             expect(topic.excerpt).to_equal("some text goes here\n<div>div text</div>\n")
@@ -210,7 +253,7 @@ class ReadingDocument(Vows.Context):
             expect(topic.date).to_equal(datetime(2012, 8, 13, 10, 20))
 
         def should_find_explicit_and_body_tags(self, topic):
-            expect(topic.tags).to_be_like(("ATAG", "atag", "btag", "TAG-WITH-DASH"))
+            expect(list(topic.tags)).to_be_like(("ATAG", "atag", "btag", "TAG-WITH-DASH"))
 
         def should_find_excerpt(self, topic):
             expect(topic.excerpt).to_equal("some text goes here")
