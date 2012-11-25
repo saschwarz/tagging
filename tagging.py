@@ -208,9 +208,34 @@ def buildDocumentTree(directoryRoot=None,
             # print "filePath:", filePath
             doc = docClass(file=filePath,
                            url=url)
+            modifyTags(doc)
             tree.add(doc)
     return tree
 
+
+IGNORE_TAGS = set(['static', 'Blosxom', 'RSS', 'ToDo',])
+MAP_TAGS = {'akc' : 'AKC',
+            'dana': 'DanaPike',
+            'dearlove': 'Dearlove',
+            'Flyball': 'flyball',
+            'ForYourCanine': 'ForYourK9',
+            'FYC': 'ForYourK9',
+            'FYK9': 'ForYourK9',
+            'Jumpers': 'jumpers',
+            'usdaa': 'USDAA',
+            'SingleSidedThreadle': 'SingleSidedThreadleHandling',
+            }
+
+def modifyTags(doc, ignores=IGNORE_TAGS, replacements=MAP_TAGS):
+    """
+    Modify supplied Document by removing tags to be ignored and replacing tags with others.
+    """
+    doc.tags = doc.tags.difference(IGNORE_TAGS)
+    for tag in doc.tags.intersection(MAP_TAGS.keys()):
+        doc.tags.add(MAP_TAGS[tag])
+        doc.tags.remove(tag)
+            
+        
 # Helper functions to provide HTML output of:
 # - Documents associated with a tag
 #   I use this to generate a static HTML page for each tag. That page contains a link to each document
@@ -260,7 +285,7 @@ def documentToHTML(doc,
                                             tags=tagFormatter(doc.tags))
     return html
 
-PageTemplate = string.Template("""$num Articles Tagged With: '$tag'
+PageTemplate = string.Template("""Articles Tagged With: '$tag'
 meta-creation_date: $date
 
 <div class="tag-docs">$docs</div>""")
